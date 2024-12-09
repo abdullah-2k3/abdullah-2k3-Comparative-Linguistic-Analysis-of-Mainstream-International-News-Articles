@@ -1,16 +1,12 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 import plotly.express as px
 from wordcloud import WordCloud
 from collections import Counter
 import os
 
-# Set page configuration
 st.set_page_config(page_title="Sentiment Analysis Dashboard", layout="wide")
 
-# Automatically detect the dataset file
 for file in os.listdir():
     if file.endswith(".csv"):
         dataset_file = file
@@ -19,21 +15,43 @@ else:
     st.error("No CSV file found in the current directory.")
     st.stop()
 
-# Load the dataset
 df = pd.read_csv(dataset_file)
 
-# Sidebar for navigation
 st.sidebar.title("Dashboard Navigation")
 st.sidebar.write("Select a section to view:")
 
-# Dashboard header
 st.title("Sentiment Analysis Dashboard")
 st.write(f"Using dataset: **{dataset_file}**")
 
-# Dataset preview
 st.sidebar.subheader("Dataset Overview")
 with st.sidebar.expander("Preview Dataset"):
-    st.sidebar.write(df.head())
+
+    rows_per_page = st.sidebar.number_input(
+        "Rows per page", min_value=5, max_value=100, value=25, step=5
+    )
+
+    if "page" not in st.session_state:
+        st.session_state.page = 1
+
+    total_rows = len(df)
+    total_pages = (total_rows + rows_per_page - 1) // rows_per_page
+
+    start_idx = (st.session_state.page - 1) * rows_per_page
+    end_idx = start_idx + rows_per_page
+    st.write(df.iloc[start_idx:end_idx])
+
+    col1, col2, col3 = st.columns([1, 2, 1])
+
+    with col1:
+        if st.button("<"):
+            st.session_state.page = max(1, st.session_state.page - 1)
+
+    with col3:
+        if st.button(">"):
+            st.session_state.page = min(total_pages, st.session_state.page + 1)
+
+    with col2:
+        st.write(f"Page {st.session_state.page} of {total_pages}")
 
 # Layout
 tab1, tab2, tab3 = st.tabs(["Overview Charts", "Detailed Analysis", "Word Cloud"])
@@ -51,30 +69,32 @@ with tab1:
         if "Sentiment_Bias" in df.columns:
             colors = ["#66FF66", "#FF3333", "#66B3FF"]
             bias_counts = df["Sentiment_Bias"].value_counts()
-            fig, ax = plt.subplots(figsize=(6, 6))
-            ax.pie(
-                bias_counts,
-                labels=bias_counts.index,
-                autopct="%1.1f%%",
-                startangle=140,
-                colors=colors,
+            fig = px.pie(
+                names=bias_counts.index,
+                values=bias_counts.values,
+                color_discrete_sequence=colors,
+                title="Overall Bias Distribution",
             )
-            plt.title("Overall Bias Distribution")
-            st.pyplot(fig)
+            st.plotly_chart(fig, use_container_width=True)
 
     with col2:
         # Visualization 2: Bias by Source
         st.subheader("Bias Distribution by Source")
         if "Source" in df.columns and "Sentiment_Bias" in df.columns:
             bias_source = (
-                df.groupby(["Source", "Sentiment_Bias"]).size().unstack(fill_value=0)
+                df.groupby(["Source", "Sentiment_Bias"])
+                .size()
+                .reset_index(name="Count")
             )
-            fig, ax = plt.subplots(figsize=(10, 6))
-            bias_source.plot(kind="bar", ax=ax)
-            plt.title("Bias Distribution by Source")
-            plt.ylabel("Number of Articles")
-            plt.xlabel("Source")
-            st.pyplot(fig)
+            fig = px.bar(
+                bias_source,
+                x="Source",
+                y="Count",
+                color="Sentiment_Bias",
+                title="Bias Distribution by Source",
+                barmode="group",
+            )
+            st.plotly_chart(fig, use_container_width=True)
 
 # Tab 2: Detailed Analysis
 with tab2:
@@ -93,11 +113,16 @@ with tab2:
             values="Sentiment_Bias",
             aggfunc="count",
             fill_value=0,
+        ).reset_index()
+        fig = px.imshow(
+            heatmap_data.iloc[:, 1:],
+            labels=dict(x="Source", y="Topic", color="Count"),
+            x=heatmap_data.columns[1:],
+            y=heatmap_data["Topic"],
+            title="Heatmap: Topics vs Sources",
+            color_continuous_scale="RdBu",
         )
-        fig, ax = plt.subplots(figsize=(8, 6))
-        sns.heatmap(heatmap_data, annot=True, cmap="RdBu", linewidths=0.5, ax=ax)
-        plt.title("Heatmap: Topics vs Sources")
-        st.pyplot(fig)
+        st.plotly_chart(fig, use_container_width=True)
 
     # Interactive Scatter Plot
     st.subheader("Scatter Plot: Topics vs Sources by Bias")
@@ -149,11 +174,7 @@ with tab3:
                 colormap="Dark2",
                 max_words=200,
             ).generate_from_frequencies(word_counts)
-            fig, ax = plt.subplots(figsize=(10, 5))
-            ax.imshow(wordcloud, interpolation="bilinear")
-            ax.axis("off")
-            plt.title("Word Cloud of Articles Keywords", fontsize=20)
-            st.pyplot(fig)
+            st.image(wordcloud.to_array(), caption="Word Cloud of Articles Keywords")
 
     with col2:
         # Topic-Specific Bias Analysis
@@ -169,12 +190,14 @@ with tab3:
             bias_source = (
                 topic_data.groupby(["Source", "Sentiment_Bias"])
                 .size()
-                .unstack(fill_value=0)
+                .reset_index(name="Count")
             )
-            fig, ax = plt.subplots(figsize=(7, 4))
-            bias_source.plot(kind="bar", ax=ax)
-            plt.title(f"Bias Distribution by Source for Topic: {selected_topic}")
-            plt.ylabel("Number of Articles")
-            plt.xlabel("Source")
-            plt.xticks(rotation=45)
-            st.pyplot(fig)
+            fig = px.bar(
+                bias_source,
+                x="Source",
+                y="Count",
+                color="Sentiment_Bias",
+                title=f"Bias Distribution by Source for Topic: {selected_topic}",
+                barmode="group",
+            )
+            st.plotly_chart(fig, use_container_width=True)
