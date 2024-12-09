@@ -4,20 +4,6 @@ This project aims to analyze linguistic patterns, sentiment biases, and keyword 
 
 ---
 
-## Table of Contents
-
-1. [Project Overview](#project-overview)  
-2. [Dataset](#dataset)  
-3. [Methodology](#methodology)  
-4. [Features](#features)  
-5. [Visualizations](#visualizations)  
-6. [Dependencies](#dependencies)  
-7. [How to Run the Project](#how-to-run-the-project)  
-8. [Results and Insights](#results-and-insights)  
-9. [Future Work](#future-work)  
-
----
-
 ## Project Overview
 
 This project investigates sentiment bias and keyword usage across news articles from five prominent sources (BBC, CNN, Al Jazeera, Fox, TRT) on global topics such as:
@@ -93,11 +79,4 @@ The project requires the following libraries and tools:
 - **Visualization**: `matplotlib`, `seaborn`, `wordcloud`, `plotly`  
 - **Other**: `nltk`
 
----
 
-## How to Run the Project
-
-1. **Clone the Repository**  
-   ```bash
-   git clone https://github.com/your-username/linguistic-analysis-news.git
-   cd linguistic-analysis-news
